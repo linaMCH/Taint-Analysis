@@ -1,0 +1,393 @@
+/* ==========================================================================
+   TeinteScope : Thème Rose & Support Dark / Light mode
+   ========================================================================== */
+
+/* --- Mode Clair par défaut --- */
+.root, .app-root {
+    /* palette rose */
+    -bg: #f7f8fa;
+    -surface-2: #f8fafc;
+    -line: #e5e7eb;
+    -text: #1f2937;
+    -muted: #64748b;
+    -pink: #CD5C5C;
+    -pink-dark: #b84b4b;
+    -pink-text: #a82e5d;
+    -red: #dc2626;
+
+    -fx-font-family: "Manrope";
+    -fx-font-size: 14px;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.label { -fx-text-fill: -text; }
+.app-root { -fx-background-color: -bg; }
+
+/* --- Mode Sombre (.app-root.dark-mode) --- */
+.app-root.dark-mode {
+    -bg: #090d16;
+    -surface-2: #111827;
+    -line: #334155;
+    -text: #f8fafc;
+    -muted: #94a3b8;
+    -pink: #CD5C5C;
+    -pink-dark: #e06d6d;
+    -pink-text: #e06d6d;
+    -red: #ef4444;
+}
+
+.app-root.dark-mode .top-bar,
+.app-root.dark-mode .pipeline,
+.app-root.dark-mode .sidebar,
+.app-root.dark-mode .editor-area,
+.app-root.dark-mode .editor-header,
+.app-root.dark-mode .editor-tab.active,
+.app-root.dark-mode .status-bar,
+.app-root.dark-mode .problems-header,
+.app-root.dark-mode .card,
+.app-root.dark-mode .report-button,
+.app-root.dark-mode .btn-secondary {
+    -fx-background-color: #111827;
+    -fx-border-color: -line;
+}
+
+.app-root.dark-mode .code-box {
+    -fx-background-color: #0b0f19;
+}
+
+.app-root.dark-mode .btn-secondary:hover {
+    -fx-background-color: #1e293b;
+}
+
+.app-root.dark-mode .file-row:hover {
+    -fx-background-color: #1e293b;
+}
+
+.app-root.dark-mode .file-row.selected {
+    -fx-background-color: #2a1b22;
+    -fx-border-color: transparent transparent transparent -pink;
+}
+
+.app-root.dark-mode .editor-header {
+    -fx-background-color: #131c2e;
+}
+
+.app-root.dark-mode .problems-panel,
+.app-root.dark-mode .problems-list,
+.app-root.dark-mode .problems-footer {
+    -fx-background-color: #090d16;
+}
+
+.app-root.dark-mode .lang-pill {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #cbd5e1;
+}
+
+/* ------------------------------------------------------------ barre du haut */
+.top-bar {
+    -fx-background-color: white;
+    -fx-border-color: transparent transparent -line transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 0 24 0 24;
+    -fx-min-height: 72; -fx-pref-height: 72; -fx-max-height: 72;
+}
+.logo-mark {
+    -fx-min-width: 40; -fx-min-height: 40; -fx-max-width: 40; -fx-max-height: 40;
+    -fx-background-color: linear-gradient(to bottom right, #db6f99, #e8875b);
+    -fx-background-radius: 11;
+}
+.brand-title { -fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: -text; }
+.brand-accent { -fx-text-fill: -pink; }
+.brand-sub { -fx-font-size: 10px; -fx-text-fill: -muted; }
+
+.lang-pill {
+    -fx-background-color: #f1f5f9;
+    -fx-background-radius: 5;
+    -fx-padding: 5 8 5 8;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #475569;
+}
+
+/* ----------------------------------------------------------------- boutons */
+.btn {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 0 16 0 16;
+    -fx-min-height: 40; -fx-pref-height: 40;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 10;
+}
+.btn-secondary {
+    -fx-background-color: white;
+    -fx-border-color: -line;
+    -fx-text-fill: -text;
+    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.06), 3, 0, 0, 1);
+}
+.btn-secondary:hover { -fx-background-color: #f8fafc; -fx-border-color: #cbd5e1; }
+.btn-primary {
+    -fx-background-color: -pink;
+    -fx-border-color: -pink;
+    -fx-text-fill: white;
+}
+.btn-primary:hover { -fx-background-color: -pink-dark; -fx-border-color: -pink-dark; }
+.btn-icon { -fx-min-width: 40; -fx-padding: 0; }
+.btn-small {
+    -fx-min-height: 34; -fx-pref-height: 34;
+    -fx-font-size: 13px;
+    -fx-background-radius: 7; -fx-border-radius: 7;
+    -fx-border-color: #cbd5e1;
+}
+.btn-flat {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-min-width: 40; -fx-min-height: 40;
+    -fx-cursor: hand;
+}
+.link-btn {
+    -fx-background-color: transparent;
+    -fx-padding: 4 0 4 0;
+    -fx-text-fill: -pink-text;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 6;
+}
+
+/* -------------------------------------------------------- étapes d'analyse */
+.pipeline {
+    -fx-background-color: white;
+    -fx-border-color: transparent transparent -line transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 0 24 0 24;
+    -fx-min-height: 44; -fx-pref-height: 44; -fx-max-height: 44;
+}
+.step-title { -fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #334155; }
+.app-root.dark-mode .step-title { -fx-text-fill: #cbd5e1; }
+.step-info { -fx-font-size: 10px; -fx-text-fill: #7c8a9e; }
+.step-line { -fx-background-color: #f8d7da; }
+.step-dot {
+    -fx-min-width: 18; -fx-min-height: 18; -fx-max-width: 18; -fx-max-height: 18;
+    -fx-background-radius: 9;
+}
+.dot-done { -fx-background-color: -pink; }
+.dot-active { -fx-background-color: linear-gradient(to bottom right, #db6f99, #e8875b); }
+.dot-pending { -fx-background-color: #e2e8f0; }
+.app-root.dark-mode .dot-pending { -fx-background-color: #334155; }
+.dot-error { -fx-background-color: -red; }
+.dot-number { -fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: white; }
+.dot-pending .dot-number { -fx-text-fill: #64748b; }
+
+/* ------------------------------------------------------------- zone centrale */
+.workspace { -fx-padding: 12; -fx-background-color: -bg; }
+
+.panel-heading { -fx-min-height: 46; -fx-padding: 0 8 0 16; }
+.panel-heading-text { -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: -muted; }
+
+/* explorateur */
+.sidebar {
+    -fx-background-color: white;
+    -fx-border-color: -line;
+    -fx-border-width: 1;
+    -fx-border-radius: 10 0 0 10;
+    -fx-background-radius: 10 0 0 10;
+}
+.tree-row { -fx-min-height: 36; }
+.tree-label { -fx-font-size: 14px; -fx-text-fill: #334155; }
+.app-root.dark-mode .tree-label { -fx-text-fill: #cbd5e1; }
+.tree-label-bold { -fx-font-size: 15px; -fx-font-weight: 600; -fx-text-fill: #334155; }
+.app-root.dark-mode .tree-label-bold { -fx-text-fill: #f8fafc; }
+.file-row {
+    -fx-min-height: 40;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 0 3;
+}
+.file-row:hover { -fx-background-color: #f8fafc; }
+.file-row.selected {
+    -fx-background-color: #fdf2f4;
+    -fx-border-color: transparent transparent transparent -pink;
+}
+.file-name { -fx-text-fill: #526273; }
+.app-root.dark-mode .file-name { -fx-text-fill: #94a3b8; }
+.file-row.selected .file-name { -fx-text-fill: -pink-dark; -fx-font-weight: bold; }
+.sidebar-summary {
+    -fx-padding: 16;
+    -fx-border-color: -line transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+.summary-text { -fx-font-size: 12px; -fx-text-fill: -muted; }
+.alerts-text { -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -red; }
+
+/* éditeur */
+.editor-area {
+    -fx-background-color: white;
+    -fx-border-color: -line transparent -line transparent;
+    -fx-border-width: 1 0 1 0;
+}
+.editor-header {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: transparent transparent -line transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-min-height: 48; -fx-pref-height: 48; -fx-max-height: 48;
+}
+.editor-tab {
+    -fx-padding: 0 12 0 14;
+    -fx-cursor: hand;
+    -fx-border-color: transparent -line transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+.editor-tab.active {
+    -fx-background-color: white;
+    -fx-border-color: -pink -line transparent transparent;
+    -fx-border-width: 3 1 0 0;
+}
+.tab-label { -fx-text-fill: -muted; }
+.editor-tab.active .tab-label { -fx-text-fill: -text; }
+.tab-close {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-min-width: 24; -fx-min-height: 24;
+    -fx-cursor: hand;
+}
+.tab-close:hover { -fx-background-color: #eef2f6; -fx-background-radius: 5; }
+.app-root.dark-mode .tab-close:hover { -fx-background-color: #334155; }
+
+.breadcrumb-row {
+    -fx-min-height: 42;
+    -fx-padding: 0 20 0 20;
+    -fx-border-color: transparent transparent #f1f5f9 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.app-root.dark-mode .breadcrumb-row {
+    -fx-border-color: transparent transparent #1e293b transparent;
+}
+.breadcrumb { -fx-text-fill: -muted; }
+.code-box { -fx-padding: 18 0 18 0; -fx-background-color: #fdfefe; }
+
+.code-row {
+    -fx-min-height: 32;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 0 3;
+}
+.line-source {
+    -fx-background-color: linear-gradient(to right, #fff1e6, #fff8f3 78%, white);
+    -fx-border-color: transparent transparent transparent #e88787;
+}
+.app-root.dark-mode .line-source {
+    -fx-background-color: linear-gradient(to right, #2a1a1f, #1e1318 78%, #0f172a);
+}
+.line-flow {
+    -fx-background-color: linear-gradient(to right, #fff1e6, #ffe4ec 70%, #fff9fb);
+    -fx-border-color: transparent transparent transparent #e88787;
+}
+.app-root.dark-mode .line-flow {
+    -fx-background-color: linear-gradient(to right, #2a1520, #22121b 70%, #0f172a);
+}
+.line-sink {
+    -fx-background-color: #fee2e2;
+    -fx-border-color: transparent transparent transparent -red;
+}
+.app-root.dark-mode .line-sink {
+    -fx-background-color: #3f1d1d;
+}
+.line-number { -fx-text-fill: #94a3b8; }
+
+.seg-plain { -fx-fill: #1f2937; }
+.app-root.dark-mode .seg-plain { -fx-fill: #f8fafc; }
+.seg-keyword { -fx-fill: #7c3aed; }
+.app-root.dark-mode .seg-keyword { -fx-fill: #a78bfa; }
+.seg-string { -fx-fill: #8a5d1c; }
+.app-root.dark-mode .seg-string { -fx-fill: #fbbf24; }
+.seg-source { -fx-fill: #be426f; }
+.seg-tainted { -fx-fill: #a82e5d; }
+.seg-sink { -fx-fill: -red; }
+
+/* panneau des problèmes */
+.problems-panel {
+    -fx-background-color: -surface-2;
+    -fx-border-color: -line;
+    -fx-border-width: 1;
+    -fx-border-radius: 0 10 10 0;
+    -fx-background-radius: 0 10 10 0;
+}
+.problems-header {
+    -fx-background-color: white;
+    -fx-background-radius: 0 10 0 0;
+    -fx-padding: 12 18 12 18;
+    -fx-min-height: 64;
+    -fx-border-color: transparent transparent -line transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.panel-title { -fx-font-size: 16px; -fx-font-weight: bold; }
+.panel-sub { -fx-font-size: 12px; -fx-text-fill: -muted; }
+.problems-list { -fx-padding: 14; -fx-background-color: -surface-2; }
+.problems-footer { -fx-padding: 0 14 14 14; -fx-background-color: -surface-2; -fx-background-radius: 0 0 10 0; }
+
+.card {
+    -fx-background-color: white;
+    -fx-background-radius: 9;
+    -fx-border-radius: 9;
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-padding: 15;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.07), 4, 0, 0, 1);
+}
+.card:hover { -fx-border-color: #cbd5e1; }
+.card.selected { -fx-border-color: #fecaca; }
+.card-title { -fx-font-size: 15px; -fx-font-weight: bold; }
+.card-desc { -fx-font-size: 13px; -fx-text-fill: #526273; }
+.app-root.dark-mode .card-desc { -fx-text-fill: #94a3b8; }
+.file-ref { -fx-text-fill: -muted; }
+
+.severity {
+    -fx-padding: 4 8 4 8;
+    -fx-background-radius: 5;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+.sev-critique { -fx-text-fill: #991b1b; -fx-background-color: #fee2e2; }
+.sev-elevee { -fx-text-fill: #9a3412; -fx-background-color: #ffedd5; }
+.sev-moyenne { -fx-text-fill: #854d0e; -fx-background-color: #fef3c7; }
+
+.report-button {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #cbd5e1;
+    -fx-padding: 0 16 0 16;
+    -fx-min-height: 44;
+    -fx-cursor: hand;
+}
+.report-button:hover { -fx-background-color: #f8fafc; }
+.report-label { -fx-font-size: 13px; -fx-text-fill: #334155; }
+.app-root.dark-mode .report-label { -fx-text-fill: #f8fafc; }
+
+/* ------------------------------------------------------------- barre d'état */
+.status-bar {
+    -fx-background-color: white;
+    -fx-border-color: -line transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 0 16 0 16;
+    -fx-spacing: 22;
+    -fx-min-height: 28; -fx-pref-height: 28; -fx-max-height: 28;
+}
+.status-bar .label { -fx-font-size: 10px; -fx-text-fill: -muted; }
+
+/* ------------------------------------------------------------ barres de défilement */
+.scroll-pane { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
+.scroll-pane > .viewport { -fx-background-color: transparent; }
+.scroll-pane > .corner { -fx-background-color: transparent; }
+.scroll-bar { -fx-background-color: transparent; }
+.scroll-bar:vertical { -fx-pref-width: 10; }
+.scroll-bar:horizontal { -fx-pref-height: 10; }
+.scroll-bar > .thumb { -fx-background-color: #cbd5e1; -fx-background-radius: 5; -fx-background-insets: 2; }
+.app-root.dark-mode .scroll-bar > .thumb { -fx-background-color: #475569; }
+.scroll-bar > .track { -fx-background-color: transparent; }
+.scroll-bar > .increment-button, .scroll-bar > .decrement-button { -fx-padding: 0; -fx-pref-width: 0; -fx-pref-height: 0; }
+.scroll-bar > .increment-button > .increment-arrow, .scroll-bar > .decrement-button > .decrement-arrow { -fx-padding: 0; -fx-shape: " "; }
