@@ -3,24 +3,24 @@ package com.teintescope.ui;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
+import javafx.scene.layout.Region;
 
-/** Barre d'état en bas de la fenêtre. */
 public class StatusBar extends HBox {
 
-    public StatusBar() {
+    public StatusBar(AppState s) {
         getStyleClass().add("status-bar");
         setAlignment(Pos.CENTER_LEFT);
 
-        HBox active = new HBox(6, new Circle(3, Color.web("#F08080")), new Label("Analyse active"));
-        active.setAlignment(Pos.CENTER_LEFT);
+        Region dot = new Region();
+        dot.getStyleClass().addAll("state-dot", "state-clean");
 
-        getChildren().addAll(
-                active,
-                new Label("Branche : principale"),
-                Ui.spacer(),
-                new Label("PHP 8.2"),
-                new Label("Ligne 18, colonne 21"));
+        Label msg = new Label();
+        msg.textProperty().bind(s.status);
+
+        Label pos = new Label();
+        pos.textProperty().bind(s.cursorLine.asString("Ligne %d"));
+        pos.visibleProperty().bind(s.projectOpen);
+
+        getChildren().addAll(dot, msg, Ui.spacer(), new Label("PHP"), pos);
     }
 }

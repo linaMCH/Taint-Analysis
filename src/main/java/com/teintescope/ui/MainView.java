@@ -1,70 +1,69 @@
 package com.teintescope.ui;
 
-import com.teintescope.data.SampleData;
-import com.teintescope.model.Vulnerability;
-import com.teintescope.ui.PipelineBar.StepState;
+import com.teintescope.model.DemoData;
+import javafx.scene.Node;
+import javafx.scene.control.SplitPane;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
 
-import java.util.List;
+import java.io.File;
 
-/** Fenêtre principale : assemble tous les panneaux et relie leurs actions. */
 public class MainView extends BorderPane {
+
+    private final AppState state = new AppState();
 
     public MainView() {
         getStyleClass().add("app-root");
 
-        List<Vulnerability> vulnerabilities = SampleData.vulnerabilities();
+        setTop(new TopBar(state, this::chooseProject, this::launchAnalysis, this::openConfig));
 
-        TopBar topBar = new TopBar();
-        PipelineBar pipeline = new PipelineBar();
-        ExplorerPanel explorer = new ExplorerPanel(SampleData.PROJECT, SampleData.files(), vulnerabilities.size());
-        EditorPanel editor = new EditorPanel();
-        ProblemsPanel problems = new ProblemsPanel(vulnerabilities);
+        WelcomeView welcome = new WelcomeView(state, this::chooseProject);
+        Node workspace = buildWorkspace();
+        setCenter(welcome);
+        state.projectOpen.addListener((o, was, now) -> setCenter(now ? workspace : welcome));
 
-        HBox workspace = new HBox(explorer, editor, problems);
-        workspace.getStyleClass().add("workspace");
-        HBox.setHgrow(editor, Priority.ALWAYS);
+        setBottom(new StatusBar(state));
+    }
 
-        setTop(new VBox(topBar, pipeline));
-        setCenter(workspace);
-        setBottom(new StatusBar());
+    private Node buildWorkspace() {
+        ExplorerPanel explorer = new ExplorerPanel(state);
+        EditorPanel editor = new EditorPanel(state);
+        ProblemsPanel problems = new ProblemsPanel(state, this::openReport);
 
-        // --- liaisons entre panneaux
-        explorer.setOnFileSelected(editor::openFile);
-        editor.setOnFileChanged(explorer::select);
-        problems.setOnSelected(v -> {
-            editor.openFile(v.file());
-            editor.scrollToLine(v.line());
-        });
+        explorer.setMinWidth(210);
+        editor.setMinWidth(380);
+        problems.setMinWidth(320);
 
-        // --- actions à brancher plus tard (TODO)
-        topBar.openButton.setOnAction(e -> System.out.println("TODO : choisir un dossier de projet"));
-        topBar.runButton.setOnAction(e -> System.out.println("TODO : lancer l'analyse"));
-        topBar.settingsButton.setOnAction(e -> System.out.println("TODO : fenêtre de configuration"));
-        editor.detailsButton.setOnAction(e -> System.out.println("TODO : panneau « Détails techniques »"));
-        problems.setOnTraceRequested(v -> System.out.println("TODO : afficher la trace du flux de " + v.file()));
-        problems.setOnReportRequested(() -> System.out.println("TODO : fenêtre du rapport"));
+        SplitPane split = new SplitPane(explorer, editor, problems);
+        split.getStyleClass().add("workspace-split");
+        split.setDividerPositions(0.16, 0.73);
+        SplitPane.setResizableWithParent(explorer, false);
+        SplitPane.setResizableWithParent(problems, false);
 
-        // --- état initial de la maquette (données d'exemple)
-        String[] times = {"0,3 s", "0,8 s", "1,2 s", "2,4 s", "0,4 s"};
-        for (int i = 0; i < times.length; i++) {
-            pipeline.setState(i, StepState.DONE, "Terminé · " + times[i]);
-        }
-        editor.openFile("connexion.php");
-        editor.openFile("recherche.php");
-        editor.openFile("connexion.php");
-        problems.markSelected(vulnerabilities.get(0));
+        VBox box = new VBox(new PipelineBar(DemoData.pipeline()), split);
+        VBox.setVgrow(split, Priority.ALWAYS);
+        box.getStyleClass().add("workspace");
+        return box;
+    }
 
-        // --- Gestion du bouton Dark / Light Mode ---
-        topBar.themeToggleButton.setOnAction(e -> {
-            if (getStyleClass().contains("dark-mode")) {
-                getStyleClass().remove("dark-mode");
-            } else {
-                getStyleClass().add("dark-mode");
-            }
-        });
+    private void chooseProject() {
+        DirectoryChooser dc = new DirectoryChooser();
+        dc.setTitle("Ouvrir un projet PHP");
+        File dir = dc.showDialog(getScene().getWindow());
+        if (dir != null) state.openProject(dir.getName());   // TODO : scanner réellement le dossier
+    }
+
+    private void launchAnalysis() {
+        state.status.set("Moteur d'analyse non connecté : résultats de démonstration affichés");
+    }
+
+    private void openConfig() {
+        ConfigDialog.show(getScene().getWindow(), state);
+    }
+
+    private void openReport() {
+        ReportDialog.show(getScene().getWindow(), DemoData.report(state.projectName.get()), state);
     }
 }

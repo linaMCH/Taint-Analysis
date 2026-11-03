@@ -1,125 +1,129 @@
 package com.teintescope.ui;
 
-import com.teintescope.model.Vulnerability;
+import com.teintescope.model.*;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
+import javafx.scene.layout.*;
 
-import java.util.LinkedHashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
-/** Panneau de droite : liste des problèmes détectés + accès au rapport. */
-public class ProblemsPanel extends VBox {
+public class ProblemsPanel extends BorderPane {
 
-    private final Map<Vulnerability, VBox> cards = new LinkedHashMap<>();
-    private Consumer<Vulnerability> onSelected = v -> {};
-    private Consumer<Vulnerability> onTraceRequested = v -> {};
-    private Runnable onReportRequested = () -> {};
+    private final AppState s;
+    private final VBox cards = new VBox(10);
+    private final Label sub = Ui.label("", "panel-sub");
+    private final FlowPane chips = new FlowPane(8, 8);
 
-    public ProblemsPanel(List<Vulnerability> vulnerabilities) {
+    public ProblemsPanel(AppState s, Runnable openReport) {
+        this.s = s;
         getStyleClass().add("problems-panel");
-        setMinWidth(320);
-        setPrefWidth(360);
 
-        int n = vulnerabilities.size();
-        Label title = new Label("Problèmes détectés");
-        title.getStyleClass().add("panel-title");
-        Label sub = new Label(n + (n > 1 ? " éléments à examiner" : " élément à examiner"));
-        sub.getStyleClass().add("panel-sub");
-        VBox header = new VBox(3, title, sub);
+        VBox listView = buildListView();
+        TraceView traceView = new TraceView(s);
+        StackPane body = new StackPane(listView, traceView);
+        listView.visibleProperty().bind(s.traceMode.not());
+        traceView.visibleProperty().bind(s.traceMode);
+        setCenter(body);
+
+        HBox report = new HBox(10, Icons.of(Icons.CHART, 16, Icons.TEAL),
+                Ui.label("Ouvrir le rapport complet", "report-label"), Ui.spacer(),
+                Icons.of(Icons.ARROW_RIGHT, 16, Icons.MUTED));
+        report.setAlignment(Pos.CENTER_LEFT);
+        report.getStyleClass().add("report-button");
+        report.setOnMouseClicked(e -> openReport.run());
+        BorderPane.setMargin(report, new Insets(0, 14, 14, 14));
+        setBottom(report);
+
+        s.filter.addListener((o, a, b) -> refresh());
+        s.selectedVuln.addListener((o, a, b) -> refresh());
+        refresh();
+    }
+
+    private VBox buildListView() {
+        VBox header = new VBox(3, Ui.label("Problèmes détectés", "panel-title"), sub);
         header.getStyleClass().add("problems-header");
-        header.setAlignment(Pos.CENTER_LEFT);
 
-        VBox list = new VBox(12);
-        list.getStyleClass().add("problems-list");
-        for (Vulnerability v : vulnerabilities) {
-            VBox card = buildCard(v);
-            cards.put(v, card);
-            list.getChildren().add(card);
+        Node banner = banner();
+        VBox top = new VBox(12, chips, banner);
+        top.setPadding(new Insets(14, 14, 4, 14));
+
+        cards.setPadding(new Insets(10, 14, 14, 14));
+        ScrollPane sp = Ui.scroll(cards);
+        VBox.setVgrow(sp, Priority.ALWAYS);
+        return new VBox(header, top, sp);
+    }
+
+    private Node banner() {
+        String available = Arrays.stream(VulnCategory.values()).filter(c -> c.maturity() == Maturity.AVAILABLE)
+                .map(VulnCategory::label).collect(Collectors.joining(", "));
+        long others = Arrays.stream(VulnCategory.values()).filter(c -> c.maturity() != Maturity.AVAILABLE).count();
+        Label l = Ui.label("Détection active : " + available + ". " + others + " autres catégories en cours de développement ou prévues.", "banner-text");
+        l.setWrapText(true);
+        HBox b = new HBox(10, Icons.of(Icons.INFO, 16, Icons.TEAL), l);
+        b.setAlignment(Pos.CENTER_LEFT);
+        b.getStyleClass().add("banner");
+        return b;
+    }
+
+    private List<Vulnerability> filtered() {
+        VulnFamily f = s.filter.get();
+        return DemoData.vulnerabilities().stream()
+                .filter(v -> f == VulnFamily.ALL || v.category().family() == f).toList();
+    }
+
+    private void refresh() {
+        List<Vulnerability> list = filtered();
+        sub.setText(list.size() + (list.size() > 1 ? " éléments" : " élément") + " à examiner");
+
+        chips.getChildren().clear();
+        for (VulnFamily fam : VulnFamily.values()) {
+            Button b = new Button(fam.label());
+            b.getStyleClass().add("chip");
+            if (fam == s.filter.get()) b.getStyleClass().add("active");
+            b.setOnAction(e -> s.filter.set(fam));
+            chips.getChildren().add(b);
         }
-        ScrollPane scroll = new ScrollPane(list);
-        scroll.setFitToWidth(true);
-        scroll.getStyleClass().add("problems-scroll");
-        VBox.setVgrow(scroll, Priority.ALWAYS);
 
-        getChildren().addAll(header, scroll, buildReportBar());
+        cards.getChildren().clear();
+        if (list.isEmpty()) {
+            boolean anyAvailable = Arrays.stream(VulnCategory.values())
+                    .anyMatch(c -> c.family() == s.filter.get() && c.maturity() == Maturity.AVAILABLE);
+            Label empty = Ui.label(anyAvailable || s.filter.get() == VulnFamily.ALL
+                    ? "Aucune vulnérabilité détectée dans cette catégorie."
+                    : "La détection de cette famille est en cours de développement.", "empty-state");
+            empty.setWrapText(true);
+            cards.getChildren().add(empty);
+            return;
+        }
+        list.forEach(v -> cards.getChildren().add(card(v)));
     }
 
-    public void setOnSelected(Consumer<Vulnerability> handler) { this.onSelected = handler; }
-    public void setOnTraceRequested(Consumer<Vulnerability> handler) { this.onTraceRequested = handler; }
-    public void setOnReportRequested(Runnable handler) { this.onReportRequested = handler; }
-
-    /** Sélectionne une carte et prévient l'écouteur. */
-    public void select(Vulnerability v) {
-        markSelected(v);
-        onSelected.accept(v);
-    }
-
-    /** Surligne une carte sans prévenir l'écouteur. */
-    public void markSelected(Vulnerability v) {
-        cards.forEach((vuln, card) -> {
-            if (vuln.equals(v)) {
-                if (!card.getStyleClass().contains("selected")) card.getStyleClass().add("selected");
-            } else {
-                card.getStyleClass().remove("selected");
-            }
-        });
-    }
-
-    private VBox buildCard(Vulnerability v) {
-        Label badge = new Label(v.severity().label().toUpperCase());
-        badge.getStyleClass().addAll("severity", v.severity().cssClass());
-
-        Label ref = new Label(v.file() + ":" + v.line());
-        ref.setFont(Ui.mono(11));
-        ref.getStyleClass().add("file-ref");
-
-        HBox top = new HBox(badge, Ui.spacer(), ref);
+    private Node card(Vulnerability v) {
+        HBox top = new HBox(8, Ui.label(v.severity().label().toUpperCase(), "severity", v.severity().css()),
+                Ui.spacer(), Ui.label(v.category().shortName(), "category-pill"));
         top.setAlignment(Pos.CENTER_LEFT);
 
-        Label title = new Label(v.title());
-        title.getStyleClass().add("card-title");
-
-        Label desc = new Label(v.description());
+        Label desc = Ui.label(v.description(), "card-desc");
         desc.setWrapText(true);
-        desc.getStyleClass().add("card-desc");
 
         Button trace = new Button("Voir la trace");
-        trace.setGraphic(Icons.of(Icons.ARROW_RIGHT, 16, Color.web("#087f72")));
-        trace.setContentDisplay(ContentDisplay.RIGHT);
         trace.getStyleClass().add("link-btn");
-        trace.setOnAction(e -> onTraceRequested.accept(v));
+        trace.setGraphic(Icons.of(Icons.ARROW_RIGHT, 14, Icons.TEAL));
+        trace.setContentDisplay(ContentDisplay.RIGHT);
+        trace.setOnAction(e -> s.showTrace(v));
 
-        VBox card = new VBox(8, top, title, desc, trace);
-        card.getStyleClass().add("card");
-        card.setOnMouseClicked(e -> select(v));
-        return card;
-    }
-
-    private HBox buildReportBar() {
-        Label label = new Label("Ouvrir le rapport complet");
-        label.getStyleClass().add("report-label");
-
-        HBox button = new HBox(10,
-                Icons.of(Icons.CHART, 18, Color.web("#334155")),
-                label,
-                Ui.spacer(),
-                Icons.of(Icons.ARROW_RIGHT, 18, Color.web("#334155")));
-        button.setAlignment(Pos.CENTER_LEFT);
-        button.getStyleClass().add("report-button");
-        button.setOnMouseClicked(e -> onReportRequested.run());
-
-        HBox footer = new HBox(button);
-        footer.getStyleClass().add("problems-footer");
-        HBox.setHgrow(button, Priority.ALWAYS);
-        return footer;
+        VBox c = new VBox(8, top, Ui.label(v.name(), "card-title"),
+                Ui.label(v.file() + " · ligne " + v.line(), "file-ref", "mono"), desc, trace);
+        c.getStyleClass().addAll("card", "bar-" + v.severity().name().toLowerCase());
+        if (v.equals(s.selectedVuln.get())) c.getStyleClass().add("selected");
+        c.setOnMouseClicked(e -> s.selectCard(v));
+        return c;
     }
 }

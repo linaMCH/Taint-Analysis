@@ -1,211 +1,162 @@
 package com.teintescope.ui;
 
-import com.teintescope.data.SampleData;
-import com.teintescope.model.CodeLine;
-import com.teintescope.model.CodeSegment;
-import com.teintescope.model.SegKind;
+import com.teintescope.model.*;
+import javafx.application.Platform;
+import javafx.collections.ListChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
+import javafx.scene.layout.*;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 
-/** Panneau central : onglets + fil d'Ariane + code avec les lignes teintées. */
-public class EditorPanel extends VBox {
+public class EditorPanel extends BorderPane {
 
-    public final Button detailsButton = new Button("Détails techniques");
-
-    private final HBox tabsBox = new HBox();
-    private final Label breadcrumb = new Label();
+    private final AppState s;
     private final VBox codeBox = new VBox();
     private final ScrollPane scroll = new ScrollPane(codeBox);
-    private final Map<String, HBox> tabs = new LinkedHashMap<>();
+    private final HBox tabs = new HBox();
+    private final HBox crumbs = new HBox(8);
+    private final Map<Integer, HBox> rows = new HashMap<>();
 
-    private List<CodeLine> currentLines = List.of();
-    private String current;
-    private Consumer<String> onFileChanged = name -> {};
-
-    public EditorPanel() {
+    public EditorPanel(AppState s) {
+        this.s = s;
         getStyleClass().add("editor-area");
 
-        detailsButton.getStyleClass().addAll("btn", "btn-secondary", "btn-small");
-        HBox.setMargin(detailsButton, new Insets(0, 10, 0, 0));
-        HBox header = new HBox(tabsBox, Ui.spacer(), detailsButton);
+        Button details = Ui.button("Détails techniques", Icons.CODE, "btn-secondary", () -> s.techVisible.set(!s.techVisible.get()));
+        details.getStyleClass().add("btn-small");
+        s.techVisible.addListener((o, a, on) -> {
+            if (on) details.getStyleClass().add("pressed"); else details.getStyleClass().remove("pressed");
+        });
+        HBox header = new HBox(tabs, Ui.spacer(), details);
         header.getStyleClass().add("editor-header");
         header.setAlignment(Pos.CENTER_LEFT);
+        HBox.setMargin(details, new Insets(0, 12, 0, 12));
+        tabs.setAlignment(Pos.CENTER_LEFT);
 
-        breadcrumb.setFont(Ui.mono(12));
-        breadcrumb.getStyleClass().add("breadcrumb");
-        HBox crumbRow = new HBox(breadcrumb);
-        crumbRow.getStyleClass().add("breadcrumb-row");
-        crumbRow.setAlignment(Pos.CENTER_LEFT);
+        crumbs.getStyleClass().add("breadcrumb-row");
+        crumbs.setAlignment(Pos.CENTER_LEFT);
 
         codeBox.getStyleClass().add("code-box");
         scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        VBox center = new VBox(crumbs, scroll);
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
-        getChildren().addAll(header, crumbRow, scroll);
+        TechPanel tech = new TechPanel(s);
+        tech.visibleProperty().bind(s.techVisible);
+        tech.managedProperty().bind(s.techVisible);
+
+        setTop(header);
+        setCenter(center);
+        setBottom(tech);
+
+        s.openTabs.addListener((ListChangeListener<String>) c -> rebuildTabs());
+        s.currentFile.addListener((o, a, b) -> { rebuildTabs(); render(); });
+        s.selectedVuln.addListener((o, a, b) -> refreshHighlight());
+        s.selectedStep.addListener((o, a, b) -> refreshHighlight());
+        rebuildTabs();
+        render();
     }
 
-    /** Appelé quand le fichier affiché change (pour synchroniser l'explorateur). */
-    public void setOnFileChanged(Consumer<String> handler) {
-        this.onFileChanged = handler;
-    }
+    // ------------------------------------------------------------------ onglets
+    private void rebuildTabs() {
+        tabs.getChildren().clear();
+        for (String name : s.openTabs) {
+            Button x = new Button();
+            x.getStyleClass().add("tab-close");
+            x.setGraphic(Icons.of(Icons.X, 12, Icons.MUTED));
+            x.setOnAction(e -> s.closeTab(name));
+            x.setOnMouseClicked(e -> e.consume());
 
-    /** Ouvre un fichier dans un onglet (ou active l'onglet existant). */
-    public void openFile(String name) {
-        if (!tabs.containsKey(name)) addTab(name);
-        show(name);
-    }
-
-    /** Fait défiler le code jusqu'à une ligne. */
-    public void scrollToLine(int number) {
-        for (int i = 0; i < currentLines.size(); i++) {
-            if (currentLines.get(i).number() == number) {
-                scroll.setVvalue(currentLines.size() <= 1 ? 0 : (double) i / (currentLines.size() - 1));
-                return;
-            }
+            HBox tab = new HBox(8, Icons.of(Icons.FILE, 14, Icons.MUTED), Ui.label(name, "tab-label", "mono"), x);
+            tab.setAlignment(Pos.CENTER_LEFT);
+            tab.getStyleClass().add("editor-tab");
+            if (name.equals(s.currentFile.get())) tab.getStyleClass().add("active");
+            tab.setOnMouseClicked(e -> s.currentFile.set(name));
+            tabs.getChildren().add(tab);
         }
     }
 
-    // ---------------------------------------------------------------- onglets
+    // ------------------------------------------------------------------ code
+    private void render() {
+        rows.clear();
+        codeBox.getChildren().clear();
+        crumbs.getChildren().clear();
+        String f = s.currentFile.get();
+        if (f == null) {
+            codeBox.getChildren().add(Ui.label("Aucun fichier ouvert : sélectionnez un fichier dans l'explorateur.", "empty-state"));
+            return;
+        }
+        crumbs.getChildren().addAll(Ui.label("src", "breadcrumb", "mono"), Ui.label("›", "breadcrumb"),
+                Ui.label(f, "breadcrumb", "mono"));
+        String fn = DemoData.scopeOf(f);
+        if (fn != null) crumbs.getChildren().addAll(Ui.label("›", "breadcrumb"), Ui.label(fn, "breadcrumb", "mono"));
 
-    private void addTab(String name) {
-        Label label = new Label(name);
-        label.setFont(Ui.mono(13));
-        label.getStyleClass().add("tab-label");
-
-        Button close = new Button();
-        close.setGraphic(Icons.of(Icons.CLOSE, 12, Color.web("#64748b")));
-        close.getStyleClass().add("tab-close");
-        close.setOnMouseClicked(e -> {
-            closeTab(name);
-            e.consume();
-        });
-
-        HBox tab = new HBox(10, Icons.of(Icons.FILE, 16, Color.web("#64748b")), label, close);
-        tab.setAlignment(Pos.CENTER_LEFT);
-        tab.getStyleClass().add("editor-tab");
-        tab.setOnMouseClicked(e -> show(name));
-
-        tabs.put(name, tab);
-        tabsBox.getChildren().add(tab);
+        for (CodeLine cl : DemoData.code(f)) {
+            HBox row = buildRow(cl);
+            rows.put(cl.number(), row);
+            codeBox.getChildren().add(row);
+        }
+        refreshHighlight();
     }
 
-    private void closeTab(String name) {
-        HBox tab = tabs.remove(name);
-        if (tab == null) return;
-        tabsBox.getChildren().remove(tab);
-        if (name.equals(current)) {
-            if (tabs.isEmpty()) {
-                current = null;
-                currentLines = List.of();
-                codeBox.getChildren().clear();
-                breadcrumb.setText("");
-            } else {
-                List<String> names = new ArrayList<>(tabs.keySet());
-                show(names.get(names.size() - 1));
-            }
-        }
-    }
-
-    private void show(String name) {
-        current = name;
-        tabs.forEach((n, tab) -> {
-            if (n.equals(name)) {
-                if (!tab.getStyleClass().contains("active")) tab.getStyleClass().add("active");
-            } else {
-                tab.getStyleClass().remove("active");
-            }
-        });
-
-        currentLines = SampleData.linesOf(name);   // plus tard : le vrai contenu du fichier
-        List<HBox> rows = new ArrayList<>();
-        for (CodeLine line : currentLines) rows.add(buildRow(line));
-        codeBox.getChildren().setAll(rows);
-
-        // fil d'Ariane d'exemple
-        breadcrumb.setText("src  ›  " + name + (name.equals("connexion.php") ? "  ›  authentifier()" : ""));
-        scroll.setVvalue(0);
-        onFileChanged.accept(name);
-    }
-
-    // ------------------------------------------------------------------ lignes
-
-    private HBox buildRow(CodeLine line) {
-        Node marker;
-        String rowClass;
-        switch (line.kind()) {
-            case SOURCE -> {
-                marker = Icons.of(Icons.DROP, 14, Color.web("#d97796"));
-                rowClass = "line-source";
-            }
-            case FLOW -> {
-                marker = Icons.of(Icons.DROP, 14, Color.web("#d97796"));
-                rowClass = "line-flow";
-            }
-            case SINK -> {
-                marker = Icons.of(Icons.TRIANGLE, 16, Color.web("#dc2626"));
-                rowClass = "line-sink";
-            }
-            default -> {
-                marker = new Region();
-                rowClass = "line-normal";
-            }
-        }
-
-        StackPane markerBox = new StackPane(marker);
-        markerBox.setMinWidth(34);
-        markerBox.setPrefWidth(34);
-        markerBox.setMaxWidth(34);
-
-        Label number = new Label(String.valueOf(line.number()));
-        number.setFont(Ui.mono(12));
-        number.setMinWidth(48);
-        number.setPrefWidth(48);
-        number.setPadding(new Insets(0, 12, 0, 0));
-        number.setAlignment(Pos.CENTER_RIGHT);
-        number.getStyleClass().add("line-number");
-
-        TextFlow code = new TextFlow();
-        code.setMaxHeight(Region.USE_PREF_SIZE);   // reste centré verticalement dans la ligne
-        for (CodeSegment seg : line.segments()) {
-            Text t = new Text(seg.text());
-            t.setFont(Ui.mono(15));
-            t.getStyleClass().add(segClass(seg.kind()));
-            if (seg.kind() == SegKind.SINK_CALL) t.setUnderline(true);
-            code.getChildren().add(t);
-        }
-
-        HBox row = new HBox(markerBox, number, code);
+    private HBox buildRow(CodeLine cl) {
+        HBox row = new HBox();
         row.setAlignment(Pos.CENTER_LEFT);
-        row.getStyleClass().addAll("code-row", rowClass);
+        row.getStyleClass().add("code-row");
+        switch (cl.kind()) {
+            case SOURCE -> row.getStyleClass().add("line-source");
+            case FLOW -> row.getStyleClass().add("line-flow");
+            case SINK -> row.getStyleClass().add("line-sink");
+            default -> { }
+        }
+
+        StackPane gutter = new StackPane();
+        gutter.setMinWidth(30);
+        gutter.setPrefWidth(30);
+        if (cl.kind() == LineKind.SINK) gutter.getChildren().add(Icons.of(Icons.ALERT, 14, Icons.DANGER));
+        else if (cl.kind() != LineKind.NORMAL) gutter.getChildren().add(Icons.of(Icons.DROPLET, 12, Icons.ACCENT));
+
+        Label num = Ui.label(String.valueOf(cl.number()), "line-number", "mono");
+        num.setMinWidth(36);
+        num.setAlignment(Pos.CENTER_RIGHT);
+
+        TextFlow flow = new TextFlow();
+        for (CodeSegment seg : cl.segments()) {
+            Text t = new Text(seg.text());
+            t.getStyleClass().addAll("code-text", "seg-" + seg.kind().name().toLowerCase());
+            flow.getChildren().add(t);
+        }
+        HBox.setMargin(flow, new Insets(0, 0, 0, 14));
+
+        row.getChildren().addAll(gutter, num, flow);
+        row.setOnMouseClicked(e -> s.cursorLine.set(cl.number()));
         return row;
     }
 
-    private static String segClass(SegKind kind) {
-        return switch (kind) {
-            case PLAIN -> "seg-plain";
-            case KEYWORD -> "seg-keyword";
-            case STRING -> "seg-string";
-            case SOURCE_VAR -> "seg-source";
-            case TAINTED -> "seg-tainted";
-            case SINK_CALL -> "seg-sink";
-        };
+    /** Met en évidence la ligne liée à l'étape de trace (ou à la vulnérabilité) sélectionnée. */
+    private void refreshHighlight() {
+        rows.values().forEach(r -> r.getStyleClass().remove("line-active"));
+        Vulnerability v = s.selectedVuln.get();
+        TraceStep st = s.selectedStep.get();
+        int target = -1;
+        if (v != null && v.file().equals(s.currentFile.get()))
+            target = (st != null && st.line() > 0) ? st.line() : v.line();
+        HBox r = rows.get(target);
+        if (r == null) return;
+        r.getStyleClass().add("line-active");
+        Platform.runLater(() -> {
+            double extra = codeBox.getHeight() - scroll.getViewportBounds().getHeight();
+            if (extra > 0) {
+                double y = r.getBoundsInParent().getMinY() - scroll.getViewportBounds().getHeight() / 3;
+                scroll.setVvalue(Math.max(0, Math.min(1, y / extra)));
+            }
+        });
     }
 }
