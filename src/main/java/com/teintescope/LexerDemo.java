@@ -6,6 +6,8 @@ import com.teintescope.lexer.Token;
 import com.teintescope.model.ConfigModel;
 
 import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -18,6 +20,10 @@ import java.util.List;
 public class LexerDemo {
 
     public static void main(String[] args) {
+        // Force l'UTF-8 : les accents et les caractères de cadre seraient remplacés
+        // par '?' avec l'encodage par défaut de la console Windows.
+        System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
+
         if (args.length < 1) {
             System.err.println("Usage: LexerDemo <fichier.php>");
             System.err.println("Exemple: LexerDemo connexion.php");

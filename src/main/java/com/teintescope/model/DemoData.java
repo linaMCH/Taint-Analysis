@@ -1,9 +1,16 @@
 package com.teintescope.model;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.teintescope.lexer.Lexer;
+import com.teintescope.lexer.Token;
+import com.teintescope.lexer.TokenType;
 
 import static com.teintescope.model.FileState.*;
 import static com.teintescope.model.LineKind.*;
@@ -166,12 +173,40 @@ public final class DemoData {
     public static List<Vulnerability> vulnerabilities() { return VULNS; }
 
     // ---------------------------------------------------------------- détails techniques
-    public static List<TokenInfo> tokens() {
-        return List.of(new TokenInfo("VARIABLE", "$email", false), new TokenInfo("OPÉRATEUR", "=", false),
-                new TokenInfo("SOURCE", "$_POST", true), new TokenInfo("CROCHET", "[", false),
-                new TokenInfo("CHAÎNE", "'email'", false), new TokenInfo("CROCHET", "]", false),
-                new TokenInfo("SÉPARATEUR", ";", false));
-    }
+        /** Fichier PHP de démonstration chargé depuis le classpath (src/main/resources/samples). */
+        private static final String SAMPLE_RESOURCE = "/samples/connexion.php";
+
+        /** Contenu de secours si la ressource est absente du classpath (build incomplet). */
+        private static final String SAMPLE_FALLBACK = """
+                <?php
+                // Page de connexion
+                $email = $_POST['email'];
+                $requete = "SELECT * FROM utilisateurs WHERE email = '" . $email . "'";
+                $resultat = mysqli_query($connexion, $requete);
+                ?>
+                """;
+
+        /**
+         * Tokens réels du fichier de démonstration, produits par le lexer.
+         * Remplace les anciennes données factices.
+         */
+        public static List<TokenInfo> tokens() {
+            List<Token> tokens = new Lexer(loadSample()).tokenize(ConfigModel.INSTANCE);
+            return tokens.stream()
+                    .filter(t -> t.type() != TokenType.EOF)
+                    .map(t -> new TokenInfo(t.type().name(), t.value(), t.line(), t.column(), t.isSource()))
+                    .toList();
+        }
+
+        /** Lit le fichier PHP d'exemple depuis le classpath. */
+        private static String loadSample() {
+            try (InputStream in = DemoData.class.getResourceAsStream(SAMPLE_RESOURCE)) {
+                if (in == null) return SAMPLE_FALLBACK;
+                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                return SAMPLE_FALLBACK;
+            }
+        }
 
     public static AstNode ast() {
         return AstNode.of("Programme", "connexion.php",
