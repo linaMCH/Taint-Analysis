@@ -205,6 +205,21 @@ class LexerTest {
     }
 
     @Test
+    void testSinkStatiqueMarque() {
+        String code = "<?php $pdo->query('SELECT 1'); PDO::query($sql); ?>";
+
+        Lexer lexer = new Lexer(code);
+        List<Token> tokens = lexer.tokenize(ConfigModel.INSTANCE);
+
+        // Seul l'appel statique PDO::query doit être marqué SINK
+        long sinkCount = tokens.stream()
+                .filter(t -> t.type() == TokenType.SINK)
+                .count();
+        assertEquals(1, sinkCount);
+        assertTrue(tokens.stream().anyMatch(t -> t.type() == TokenType.SINK && t.value().equals("query")));
+    }
+
+    @Test
     void testCommentaireBlockNonTermine() {
         String code = "<?php /* commentaire non terminé";
 

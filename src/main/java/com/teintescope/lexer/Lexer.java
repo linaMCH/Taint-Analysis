@@ -105,7 +105,39 @@ public class Lexer {
             }
         }
         tokens.add(new Token(TokenType.EOF, "", line, column));
-        return tokens;
+        return tagStaticCalls(tokens, sinkNames, sanitizerNames);
+    }
+
+    /**
+     * Re-type les appels statiques de type {@code PDO::query} déclarés dans la config.
+     * Le lexer produit trois tokens (IDENTIFIER, DOUBLE_COLON, IDENTIFIER) ; on marque
+     * le dernier identifiant SINK ou SANITIZER lorsque la combinaison « Classe::méthode »
+     * figure dans la configuration.
+     */
+    private List<Token> tagStaticCalls(List<Token> tokens, Set<String> sinkNames,
+                                        Set<String> sanitizerNames) {
+        boolean hasStatic = sinkNames.stream().anyMatch(n -> n.contains("::"))
+                || sanitizerNames.stream().anyMatch(n -> n.contains("::"));
+        if (!hasStatic) return tokens;
+
+        List<Token> result = new ArrayList<>(tokens);
+        for (int i = 0; i + 2 < result.size(); i++) {
+            Token cls = result.get(i);
+            Token colon = result.get(i + 1);
+            Token method = result.get(i + 2);
+            if (cls.type() != TokenType.IDENTIFIER
+                    || colon.type() != TokenType.DOUBLE_COLON
+                    || (method.type() != TokenType.IDENTIFIER && method.type() != TokenType.KEYWORD)) {
+                continue;
+            }
+            String fullName = cls.value() + "::" + method.value();
+            if (sinkNames.contains(fullName)) {
+                result.set(i + 2, new Token(TokenType.SINK, method.value(), method.line(), method.column()));
+            } else if (sanitizerNames.contains(fullName)) {
+                result.set(i + 2, new Token(TokenType.SANITIZER, method.value(), method.line(), method.column()));
+            }
+        }
+        return result;
     }
 
     /**
@@ -123,13 +155,15 @@ public class Lexer {
             return new Token(TokenType.SOURCE, token.value(), token.line(), token.column());
         }
 
-        // Les identifiants correspondant à des sinks
-        if (token.type() == TokenType.IDENTIFIER && sinkNames.contains(token.value())) {
+        // Les identifiants correspondant à des sinks (y compris mots-clés comme echo)
+        if ((token.type() == TokenType.IDENTIFIER || token.type() == TokenType.KEYWORD)
+                && sinkNames.contains(token.value())) {
             return new Token(TokenType.SINK, token.value(), token.line(), token.column());
         }
 
         // Les identifiants correspondant à des sanitizers
-        if (token.type() == TokenType.IDENTIFIER && sanitizerNames.contains(token.value())) {
+        if ((token.type() == TokenType.IDENTIFIER || token.type() == TokenType.KEYWORD)
+                && sanitizerNames.contains(token.value())) {
             return new Token(TokenType.SANITIZER, token.value(), token.line(), token.column());
         }
 
@@ -390,8 +424,9 @@ public class Lexer {
             case '~' -> { return new Token(TokenType.IDENTIFIER, "~", startLine, startCol); }
             case '@' -> { return new Token(TokenType.IDENTIFIER, "@", startLine, startCol); }
 
-            // Point (concaténation ou début de flottant)
+            // Point (concaténation, affectation par concaténation ou début de flottant)
             case '.' -> {
+                if (match('=')) return new Token(TokenType.CONCAT_ASSIGN, ".=", startLine, startCol);
                 if (match('.')) {
                     throw new LexerException("Opérateur '..' non supporté en PHP", startLine, startCol);
                 }
