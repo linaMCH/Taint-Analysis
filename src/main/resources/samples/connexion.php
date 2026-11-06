@@ -15,4 +15,5 @@ if (!empty($email)) {
         return mysqli_fetch_assoc($resultat);
     }
 }
+$id = intval($_GET['id']);
 ?>
